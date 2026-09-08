@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Native Android APK
 
 on:
   push:
@@ -8,65 +8,28 @@ on:
 permissions:
   contents: read
 
-env:
-  NEXT_TELEMETRY_DISABLED: 1
-
 jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.15.0
-          run_install: false
-
-      - name: Install web dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Export web app
-        run: pnpm --filter @yuklab/web build
-        env:
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
-
-      - name: Verify web export
-        run: test -f apps/web/out/index.html
-
-      - name: Copy web export into Android assets
-        run: |
-          rm -rf android/app/src/main/assets/site
-          mkdir -p android/app/src/main/assets/site
-          cp -R apps/web/out/. android/app/src/main/assets/site/
-          test -f android/app/src/main/assets/site/index.html
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.10.2
-
-      - name: Build debug APK
-        run: gradle -p android --no-daemon assembleDebug
-
-      - name: Verify APK contains web app
-        run: unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/site/index.html'
-
+      - name: Build native APK
+        run: gradle -p android --no-daemon clean assembleDebug
+      - name: Verify APK
+        run: test -f android/app/build/outputs/apk/debug/app-debug.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yuklab-debug-apk
+          name: yuklab-native-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
