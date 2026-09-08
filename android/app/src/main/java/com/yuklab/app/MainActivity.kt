@@ -22,7 +22,7 @@ class MainActivity : Activity() {
     private var server: String = ""
     private val pad = 16
 
-    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); token=prefs.getString("token",null); server=prefs.getString("server","")?:""; showHome() }
+    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); token=prefs.getString("token",null); server=prefs.getString("server","https://yuklab-api.onrender.com")?:"https://yuklab-api.onrender.com"; showHome() }
 
     private fun base(title:String):LinearLayout{
         val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(248,249,250))}
