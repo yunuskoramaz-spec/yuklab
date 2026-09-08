@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: yuklab-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile.api
+    dockerContext: .
+    dockerCommand: sh -c 'pnpm --filter @yuklab/database exec prisma db push --schema prisma/schema.prisma --accept-data-loss && node apps/api/dist/server.js'
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yuklab-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: yuklab-redis
+          type: keyvalue
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_TTL
+        value: 15m
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: "30"
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: TRACKING_LOCATION_TTL_SECONDS
+        value: "120"
+      - key: MATCHING_MAX_RADIUS_KM
+        value: "50"
+      - key: ROUTING_PROVIDER
+        value: none
+      - key: ROUTING_BASE_URL
+        value: https://router.project-osrm.org
+      - key: ROUTING_TIMEOUT_MS
+        value: "5000"
+
+  - type: keyvalue
+    name: yuklab-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+    persistenceMode: off
+
+databases:
+  - name: yuklab-db
+    plan: free
+    region: frankfurt
