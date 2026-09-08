@@ -23,12 +23,13 @@ ENV NODE_ENV=production
 RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 COPY --from=build /app/package.json /app/pnpm-workspace.yaml ./
 COPY --from=build /app/apps/api/package.json apps/api/package.json
-COPY --from=build /app/apps/api/node_modules apps/api/node_modules
 COPY --from=build /app/packages/database packages/database
-COPY --from=build /app/packages/database/node_modules packages/database/node_modules
 COPY --from=build /app/packages/types packages/types
-COPY --from=build /app/packages/types/node_modules packages/types/node_modules
-COPY --from=build /app/node_modules node_modules
+
+# Install dependencies fresh in the runtime image so pnpm workspace links
+# and all API runtime dependencies (including Fastify) are valid in /app.
+RUN pnpm install --no-frozen-lockfile
+
 COPY --from=build /app/apps/api/dist apps/api/dist
 
 EXPOSE 3001
