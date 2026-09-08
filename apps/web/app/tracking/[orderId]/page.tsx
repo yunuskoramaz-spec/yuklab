@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { getOrderTracking, getRoute, getTrackingWsToken, trackingWebSocketUrl, type RoutePoint, type TrackingData } from "../../lib/api";
 
+export function generateStaticParams() { return [{ orderId: "app" }]; }
+
 const TrackingMap = dynamic(() => import("./TrackingMap"), { ssr: false, loading: () => <div className="tracking-map-loading">Harita yükleniyor…</div> });
 
 const STALE_LOCATION_MS = 60_000;
@@ -47,7 +49,10 @@ export default function TrackingPage({ params }: { params: Promise<{ orderId: st
 
   useEffect(() => {
     let cancelled = false;
-    void params.then(({ orderId: resolvedOrderId }) => { if (!cancelled) setOrderId(resolvedOrderId); });
+    void params.then(({ orderId: resolvedOrderId }) => {
+      const queryOrderId = new URLSearchParams(window.location.search).get("orderId");
+      if (!cancelled) setOrderId(queryOrderId || resolvedOrderId);
+    });
     return () => { cancelled = true; };
   }, [params]);
 
