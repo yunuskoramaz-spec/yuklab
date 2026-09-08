@@ -31,7 +31,7 @@ services:
       - key: REFRESH_TOKEN_TTL_DAYS
         value: "30"
       - key: CORS_ORIGIN
-        value: "*"
+        value: http://localhost:3000
       - key: TRACKING_LOCATION_TTL_SECONDS
         value: "120"
       - key: MATCHING_MAX_RADIUS_KM
