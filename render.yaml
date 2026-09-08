@@ -6,7 +6,7 @@ services:
     region: frankfurt
     dockerfilePath: ./Dockerfile.api
     dockerContext: .
-    dockerCommand: sh -c 'pnpm --filter @yuklab/database exec prisma db push --schema prisma/schema.prisma --accept-data-loss && node apps/api/dist/server.js'
+    dockerCommand: sh -c 'pnpm --filter @yuklab/database exec prisma db push --schema prisma/schema.prisma && node apps/api/dist/server.js'
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
