@@ -3,6 +3,7 @@ package com.yuklab.app
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
@@ -29,6 +30,20 @@ class MainActivity : Activity() {
         web.settings.allowFileAccess = false
         web.settings.allowContentAccess = false
         web.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val uri = request.url
+                val marker = "/assets/site/tracking/"
+                if (uri.host == "appassets.androidplatform.net" && uri.path?.startsWith(marker) == true) {
+                    val rawId = uri.path!!.removePrefix(marker).trim('/').substringBefore('/')
+                    if (rawId.isNotBlank() && rawId != "app") {
+                        val target = "https://appassets.androidplatform.net/assets/site/tracking/app/index.html?orderId=${Uri.encode(rawId)}"
+                        view.loadUrl(target)
+                        return true
+                    }
+                }
+                return false
+            }
+
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
                 assetLoader.shouldInterceptRequest(request.url)
         }
