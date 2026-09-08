@@ -22,7 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -38,11 +37,15 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
 
+      - name: Verify web export
+        run: test -f apps/web/out/index.html
+
       - name: Copy web export into Android assets
         run: |
           rm -rf android/app/src/main/assets/site
           mkdir -p android/app/src/main/assets/site
           cp -R apps/web/out/. android/app/src/main/assets/site/
+          test -f android/app/src/main/assets/site/index.html
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -57,6 +60,9 @@ jobs:
 
       - name: Build debug APK
         run: gradle -p android --no-daemon assembleDebug
+
+      - name: Verify APK contains web app
+        run: unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep 'assets/site/index.html'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
