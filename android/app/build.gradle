@@ -3,9 +3,24 @@ plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
 android {
     namespace 'com.yuklab.app'
     compileSdk 35
-    defaultConfig { applicationId 'com.yuklab.nativeapp'; minSdk 24; targetSdk 35; versionCode 3; versionName '2.0' }
+    buildToolsVersion "35.0.0"
+    defaultConfig { applicationId 'com.yuklab.nativeapp'; minSdk 24; targetSdk 35; versionCode 6; versionName '2.3' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = '17' }
+    testOptions { unitTests.includeAndroidResources = true }
 }
 
-dependencies { }
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+    testImplementation 'org.json:json:20240303'
+}
+
+tasks.withType(Test).configureEach {
+    maxHeapSize = '1536m'
+    systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+    ['http.proxyHost','http.proxyPort','https.proxyHost','https.proxyPort','http.nonProxyHosts','javax.net.ssl.trustStore'].each { key ->
+        if (System.getProperty(key) != null) systemProperty key, System.getProperty(key)
+    }
+}

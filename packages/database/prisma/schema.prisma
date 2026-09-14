@@ -64,6 +64,7 @@ model User {
   firstName         String
   lastName          String
   preferredLanguage String     @default("tr-TR")
+  profile           Json?
   role              UserRole   @default(CUSTOMER)
   status            UserStatus @default(PENDING)
   createdAt         DateTime   @default(now())
@@ -78,6 +79,8 @@ model User {
   documents         Document[]
   auditLogs         AuditLog[]
   sessions          AuthSession[]
+  contacts          Contact[] @relation("ContactOwner")
+  savedBy           Contact[] @relation("ContactPerson")
 
   @@index([role, status])
   @@index([createdAt])
@@ -138,6 +141,7 @@ model Vehicle {
   plateNumber    String?  @unique
   capacityKg     Decimal? @db.Decimal(12,2)
   volumeM3       Decimal? @db.Decimal(12,3)
+  details        Json?
   refrigerated   Boolean  @default(false)
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -264,4 +268,18 @@ model AuditLog {
 
   @@index([entityType, entityId, createdAt])
   @@index([actorId, createdAt])
+}
+
+model Contact {
+  id        String @id @default(cuid())
+  ownerId   String
+  contactId String
+  note      String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner     User @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  contact   User @relation("ContactPerson", fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, contactId])
+  @@index([ownerId, updatedAt])
 }
