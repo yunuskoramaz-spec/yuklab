@@ -1,0 +1,67 @@
+name: Recover YükLab 2.2 sources
+on:
+  push:
+    branches: [design/premium-turquoise]
+    paths: [.github/workflows/recover-source.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and recover source archive
+        shell: python
+        run: |
+          import pathlib, zipfile, re, stat
+          root = pathlib.Path.cwd()
+          with zipfile.ZipFile("yuklab.zip") as z:
+              entries = [i for i in z.infolist() if not i.is_dir()]
+              if len(entries) > 3000 or sum(i.file_size for i in entries) > 50_000_000:
+                  raise SystemExit("Archive limits exceeded")
+              candidates = [i.filename[:-len("android/app/build.gradle")] for i in entries if i.filename.endswith("android/app/build.gradle")]
+              if len(candidates) != 1:
+                  raise SystemExit("Expected exactly one Android project")
+              prefix = candidates[0]
+              gradle = z.read(prefix + "android/app/build.gradle").decode("utf-8")
+              if not re.search(r"versionName\s+['\"]2\.2['\"]", gradle):
+                  raise SystemExit("Archive is not version 2.2; no source files changed")
+              pending = []
+              for item in entries:
+                  if not item.filename.startswith(prefix):
+                      continue
+                  rel = pathlib.PurePosixPath(item.filename[len(prefix):])
+                  if rel.is_absolute() or ".." in rel.parts or "\\" in str(rel):
+                      raise SystemExit("Unsafe archive path")
+                  if stat.S_ISLNK(item.external_attr >> 16):
+                      raise SystemExit("Symlinks are not accepted")
+                  if any(part in {".git", "node_modules", "build", ".gradle", "development-signing"} for part in rel.parts):
+                      continue
+                  if str(rel).startswith(".github/"):
+                      continue
+                  if rel.name.endswith((".keystore", ".jks", ".pem", ".p12", ".zip", ".apk")) or rel.name == "local.properties" or (rel.name.startswith(".env") and not rel.name.endswith(".example")):
+                      continue
+                  if not rel.parts or rel.parts[0] not in {"android", "apps", "packages", "docs", "README.md", "package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".gitignore", "Dockerfile.api", "docker-compose.yml", "render.yaml"}:
+                      continue
+                  pending.append((rel, z.read(item)))
+              paths = {str(p) for p, _ in pending}
+              required = {"android/app/src/main/java/com/yuklab/app/UiKit.kt", "android/app/src/main/java/com/yuklab/app/SessionStore.kt", "packages/database/prisma/migrations/0002_mobile_profiles/migration.sql"}
+              if not required.issubset(paths):
+                  raise SystemExit("Required 2.2 source files are missing")
+              for rel, data in pending:
+                  dst = root.joinpath(*rel.parts)
+                  dst.parent.mkdir(parents=True, exist_ok=True)
+                  dst.write_bytes(data)
+              print("Recovered", len(pending), "source files; version 2.2 confirmed")
+              (root / "android/gradlew").chmod(0o755)
+      - name: Commit recovered sources to design branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android apps packages docs README.md package.json pnpm-workspace.yaml .gitignore Dockerfile.api docker-compose.yml render.yaml
+          if test -f pnpm-lock.yaml; then git add pnpm-lock.yaml; fi
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Restore verified 2.2 source archive before UI redesign"
+          git push origin HEAD:design/premium-turquoise
