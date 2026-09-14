@@ -50,7 +50,7 @@ export function buildApp() {
     }
   });
   app.register(websocket);
-  app.get("/health", async () => ({ status: "ok", service: "yuklab-api", version: "0.2.0" }));
+  app.get("/health", async () => ({ status: "ok", service: "yuklab-api", version: "0.1.0" }));
   app.get("/ready", async (_request, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
