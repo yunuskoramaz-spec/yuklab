@@ -1,39 +1,86 @@
 "use client";
+
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { acceptOffer, getTrackingWsToken, listOrderMatches, listOrderOffers, listOrders, Match, Offer, Order, trackingWebSocketUrl } from "../lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { AppShell } from "../components/AppShell";
+import { browserAccessToken, cancelOrder, listOrders, type Order } from "../lib/api";
 
-function requirementSummary(payload: Order["payload"]) { if (!payload) return ""; const parts: string[] = []; if (payload.weightKg) parts.push(`${payload.weightKg} kg`); if (payload.volumeM3) parts.push(`${payload.volumeM3} m³`); if (payload.vehicleType) parts.push(payload.vehicleType); if (payload.refrigerated) parts.push("Soğutuculu"); return parts.join(" · "); }
-const trackingStatuses = new Set(["DRIVER_ASSIGNED", "EN_ROUTE_PICKUP", "ARRIVED_PICKUP", "LOADED", "IN_TRANSIT", "ARRIVED_DELIVERY", "DELIVERED"]);
-const statusSteps = [["DRIVER_ASSIGNED", "Sürücü atandı"], ["EN_ROUTE_PICKUP", "Pickup'a gidiliyor"], ["ARRIVED_PICKUP", "Pickup noktasında"], ["LOADED", "Yük alındı"], ["IN_TRANSIT", "Taşınıyor"], ["ARRIVED_DELIVERY", "Teslimat noktasında"], ["DELIVERED", "Teslim edildi"], ["COMPLETED", "Tamamlandı"]] as const;
-const statusLabels: Record<string, string> = Object.fromEntries(statusSteps);
-const terminalLabels: Record<string, string> = { CANCELLED: "İptal edildi", EXPIRED: "Süresi doldu", FAILED: "Başarısız", DISPUTED: "Uyuşmazlık" };
-const terminalStatuses = new Set(["COMPLETED", "CANCELLED", "EXPIRED", "FAILED", "DISPUTED"]);
+type Filter = "active" | "waiting" | "done";
 
-export default function OrdersPage(){
- const [token,setToken]=useState(""),[orders,setOrders]=useState<Order[]>([]),[offers,setOffers]=useState<Record<string,Offer[]>>({}),[matches,setMatches]=useState<Record<string,Match[]>>({}),[busy,setBusy]=useState(""),[loadingMatches,setLoadingMatches]=useState(""),[message,setMessage]=useState("");
- const socketsRef=useRef<Map<string,WebSocket>>(new Map());
- async function load(t:string){const r=await listOrders(t);setOrders(r.orders);const entries=await Promise.all(r.orders.map(async o=>[o.id,(await listOrderOffers(t,o.id)).offers] as const));setOffers(Object.fromEntries(entries));}
- useEffect(()=>{const t=window.localStorage.getItem("yuklab_access_token")??"";setToken(t);if(!t)return;void load(t).catch(e=>setMessage(e instanceof Error?e.message:"Siparişler alınamadı."));const refresh=window.setInterval(()=>{void load(t).catch(()=>undefined);},15000);const sockets=socketsRef.current;return()=>{window.clearInterval(refresh);for(const socket of sockets.values())socket.close();sockets.clear();};},[]);
- useEffect(()=>{
-   if(!token)return;
-   const active=new Set(orders.filter(o=>!terminalStatuses.has(o.status)).map(o=>o.id));
-   for(const [id,socket] of socketsRef.current) if(!active.has(id)){socket.close();socketsRef.current.delete(id);}
-   for(const order of orders){if(!active.has(order.id)||socketsRef.current.has(order.id))continue;
-     void getTrackingWsToken(token,order.id).then(({token:wsToken})=>{
-       if(socketsRef.current.has(order.id))return;
-       const socket=new WebSocket(trackingWebSocketUrl(order.id),[`yuklab-token.${wsToken}`]);
-       socketsRef.current.set(order.id,socket);
-       socket.onmessage=(event)=>{try{const payload=JSON.parse(event.data) as {type?:string;status?:string};
-         if(payload.type==="order.status"&&payload.status){setOrders(current=>current.map(item=>item.id===order.id?{...item,status:payload.status!}:item));return;}
-         if(payload.type==="order.offer"){void listOrderOffers(token,order.id).then(r=>setOffers(current=>({...current,[order.id]:r.offers}))).catch(()=>undefined);}
-       }catch{/* Ignore malformed events. */}};
-       socket.onclose=()=>{if(socketsRef.current.get(order.id)===socket)socketsRef.current.delete(order.id);};
-       socket.onerror=()=>undefined;
-     }).catch(()=>undefined);
-   }
- },[orders,token]);
- async function showMatches(orderId:string){if(!token)return;setLoadingMatches(orderId);setMessage("");try{const r=await listOrderMatches(token,orderId);setMatches(current=>({...current,[orderId]:r.matches}));}catch(e){setMessage(e instanceof Error?e.message:"Uygun taşıyıcılar alınamadı.");}finally{setLoadingMatches("");}}
- async function choose(orderId:string,offerId:string){if(!token)return;setBusy(offerId);setMessage("");try{await acceptOffer(token,orderId,offerId);await load(token);setMessage("Teklif kabul edildi. Sürücü atandı.");}catch(e){setMessage(e instanceof Error?e.message:"Teklif kabul edilemedi.");}finally{setBusy("");}}
- return <main className="dashboard"><header className="dashboard-header"><div><p className="eyebrow">YÜKLAB · CUSTOMER</p><h1>Siparişlerim</h1><p className="lead">Taleplerini, gelen teklifleri ve seçtiğin hizmet sağlayıcıyı yönet.</p></div><Link className="nav-link" href="/">Yeni talep →</Link></header>{!token?<div className="notice error">Siparişlerini görmek için giriş yapmalısın.</div>:<>{message&&<div className="notice">{message}</div>}<div className="stack">{orders.length===0?<div className="empty">Henüz sipariş yok.</div>:orders.map(o=>{const currentIndex=statusSteps.findIndex(([status])=>status===o.status);return <article className="job-card" key={o.id}><div className="job-top"><strong>{o.serviceType}</strong><span className={`status-badge ${o.status.toLowerCase()}`}>{statusLabels[o.status]??terminalLabels[o.status]??o.status}</span></div><div className="order-timeline">{statusSteps.map(([status,label],index)=><div className={`order-step${index<currentIndex?" done":index===currentIndex?" current":""}`} key={status}><span className="order-step-dot">{index<currentIndex?"✓":index+1}</span><span>{label}</span></div>)}</div><p><b>{o.pickupAddress}</b> → {o.deliveryAddress||"Teslimat adresi yok"}</p>{(o.pickupLat||o.deliveryLat)&&<p className="requirements">📍 GPS: {o.pickupLat&&o.pickupLng?`${o.pickupLat}, ${o.pickupLng}`:"Alım yok"} → {o.deliveryLat&&o.deliveryLng?`${o.deliveryLat}, ${o.deliveryLng}`:"Teslimat yok"}</p>}{requirementSummary(o.payload)&&<p className="requirements"><b>Yük gereksinimleri:</b> {requirementSummary(o.payload)}</p>}{trackingStatuses.has(o.status)&&o.assignedDriverId&&<Link className="tracking-button" href={`/tracking/${o.id}`}>📍 Sürücüyü canlı takip et →</Link>}<button onClick={()=>showMatches(o.id)} disabled={loadingMatches===o.id}>{loadingMatches===o.id?"Eşleştiriliyor…":"En uygun taşıyıcıları bul →"}</button><div className="match-list">{(matches[o.id]||[]).length>0&&<><h3>Akıllı eşleştirme</h3>{matches[o.id].map((m,index)=><div className="match-card" key={`${m.providerId}-${m.vehicleId??"none"}`}><div className="job-top"><strong>#{index+1} Uygun taşıyıcı</strong><span>{m.score.toFixed(0)} puan</span></div><p>{m.distanceKm.toFixed(1)} km · {m.etaMinutes?`${m.etaMinutes} dk ETA`:"ETA hesaplanamadı"} · ⭐ {m.rating.toFixed(1)} · Güvenilirlik {m.reliabilityScore.toFixed(0)}</p><p><b>Araç:</b> {m.vehicleType||"Standart"}{m.vehicleSubtype?` / ${m.vehicleSubtype}`:""} · {m.capacityKg?`${m.capacityKg} kg`:"Kapasite yok"}{m.volumeM3?` · ${m.volumeM3} m³`:""}{m.refrigerated?" · ❄ Soğutuculu":""}</p></div>)}</>}</div><h3>Teklifler</h3>{(offers[o.id]||[]).length===0?<p>Henüz teklif gelmedi.</p>:(offers[o.id]||[]).map(f=><div className="offer-card" key={f.id}><div><strong>{f.provider?.firstName} {f.provider?.lastName}</strong><span>{f.status}</span></div><p>{Number(f.amountMinor)/100} {f.currency} · {f.etaMinutes?`${f.etaMinutes} dk`:"ETA yok"}</p>{f.note&&<small>{f.note}</small>}{f.status==="PENDING"&&["PUBLISHED","OFFERING"].includes(o.status)&&<button disabled={busy===f.id} onClick={()=>choose(o.id,f.id)}>{busy===f.id?"Seçiliyor…":"Bu teklifi kabul et"}</button>}</div>)}</article>})}</div></>}</main>;
+function statusLabel(status: string) {
+  const labels: Record<string, string> = { DRAFT: "Taslak", PUBLISHED: "Aktif", OFFERING: "Teklif bekliyor", ACCEPTED: "Kabul edildi", DRIVER_ASSIGNED: "Taşıyıcı atandı", EN_ROUTE_PICKUP: "Alıma gidiyor", LOADED: "Yüklendi", IN_TRANSIT: "Yolda", DELIVERED: "Teslim edildi", COMPLETED: "Tamamlandı", CANCELLED: "İptal" };
+  return labels[status] ?? status;
+}
+function isActive(status: string) { return !["COMPLETED", "DELIVERED", "CANCELLED", "EXPIRED", "FAILED"].includes(status); }
+function money(value?: string | null, currency = "TRY") { const minor = value ? Number(value) : NaN; if (!Number.isFinite(minor)) return null; return new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(minor / 100); }
+
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("active");
+  const [token, setToken] = useState<string | null>(null);
+
+  async function load() {
+    const access = browserAccessToken();
+    setToken(access);
+    if (!access) { setLoading(false); return; }
+    setLoading(true); setError("");
+    try { setOrders((await listOrders(access)).orders); }
+    catch (e) { setError(e instanceof Error ? e.message : "İlanlar yüklenemedi."); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { void load(); }, []);
+
+  const visible = useMemo(() => orders.filter((order) => {
+    const byTab = filter === "waiting" ? order.status === "OFFERING" : filter === "done" ? ["COMPLETED", "DELIVERED"].includes(order.status) : isActive(order.status);
+    const text = `${order.pickupAddress} ${order.deliveryAddress ?? ""} ${order.payload?.loadType ?? ""}`.toLocaleLowerCase("tr-TR");
+    return byTab && text.includes(query.trim().toLocaleLowerCase("tr-TR"));
+  }), [orders, query, filter]);
+
+  async function remove(id: string) {
+    if (!token || !window.confirm("İlan yayından kaldırılıp iptal durumuna alınsın mı?")) return;
+    try { await cancelOrder(token, id); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : "İlan kaldırılamadı."); }
+  }
+
+  return (
+    <AppShell title="İlanlar" kicker="LOJİSTİK MARKETPLACE">
+      {!token && !loading ? (
+        <section className="yl-card yl-empty"><strong>İlanlarını görmek için giriş yap</strong><p>Profil ekranından hesabına giriş yapabilir veya yeni hesap oluşturabilirsin.</p><Link className="yl-btn" href="/profile" style={{ marginTop: 14 }}>Giriş / Kayıt</Link></section>
+      ) : <>
+        <section className="yl-card" style={{ marginBottom: 14 }}>
+          <div className="yl-form-row">
+            <label style={{ display: "grid", gap: 7, fontSize: 12, color: "var(--yl-muted)", fontWeight: 800 }}>Ara<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Çıkış, varış veya yük türü" /></label>
+            <div className="yl-tabs" aria-label="İlan filtreleri">
+              <button className={filter === "active" ? "active" : ""} onClick={() => setFilter("active")}>Aktif</button>
+              <button className={filter === "waiting" ? "active" : ""} onClick={() => setFilter("waiting")}>Teklif bekleyen</button>
+              <button className={filter === "done" ? "active" : ""} onClick={() => setFilter("done")}>Tamamlanan</button>
+            </div>
+          </div>
+        </section>
+        {error && <p className="yl-error">{error} <button className="yl-btn-secondary" onClick={() => void load()} style={{ marginLeft: 8 }}>Tekrar dene</button></p>}
+        {loading ? <div className="yl-card yl-loading">İlanlar yükleniyor…</div> : visible.length === 0 ? (
+          <section className="yl-card yl-empty"><strong>Henüz ilan yok</strong><p>Bu filtreye uyan gerçek bir ilan bulunamadı.</p><Link className="yl-btn" href="/create" style={{ marginTop: 14 }}>Yeni ilan oluştur</Link></section>
+        ) : (
+          <section className="yl-order-list">
+            {visible.map((order) => (
+              <article className="yl-card yl-order-card" key={order.id}>
+                <div className="yl-order-top"><span className="yl-badge">{order.payload?.vehicleType ?? "Yük"}</span><span className="yl-badge neutral">{statusLabel(order.status)}</span></div>
+                <div className="yl-route"><div><strong>{order.pickupAddress}</strong><small>Çıkış</small></div><span className="yl-route-arrow">→</span><div><strong>{order.deliveryAddress || "Belirtilmedi"}</strong><small>Varış</small></div></div>
+                <div className="yl-order-meta">
+                  <div><span>Yük tipi</span><strong>{order.payload?.loadType || "-"}</strong></div>
+                  <div><span>Ağırlık</span><strong>{order.payload?.weightKg ? `${order.payload.weightKg} kg` : "-"}</strong></div>
+                  <div><span>Alım tarihi</span><strong>{order.scheduledAt ? order.scheduledAt.slice(0, 10) : "-"}</strong></div>
+                  <div><span>Fiyat</span><strong className="yl-price">{money(order.budgetMinor, order.currency) ?? "Teklif"}</strong></div>
+                </div>
+                <div className="yl-form-row"><Link className="yl-btn" href={`/orders/${order.id}`}>Detayları gör →</Link>{["DRAFT", "PUBLISHED", "OFFERING"].includes(order.status) && <button className="yl-btn-danger" onClick={() => void remove(order.id)}>Yayından kaldır</button>}</div>
+              </article>
+            ))}
+          </section>
+        )}
+      </>}
+    </AppShell>
+  );
 }
