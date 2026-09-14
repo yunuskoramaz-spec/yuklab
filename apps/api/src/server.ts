@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import { directoryRoutes } from "./modules/directory/routes";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import rateLimit from "@fastify/rate-limit";
@@ -59,6 +60,7 @@ export function buildApp() {
   });
   app.register(authRoutes);
   app.register(userRoutes);
+  app.register(directoryRoutes);
   app.register(orderRoutes);
   app.register(orderTransitionRoutes);
   app.register(providerOrderRoutes);

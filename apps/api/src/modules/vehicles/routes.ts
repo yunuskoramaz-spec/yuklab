@@ -12,6 +12,7 @@ const VEHICLE_TYPES = new Set([
   "REFRIGERATED",
   "DUMP_TRUCK",
   "FLATBED",
+  "LOWBED",
 ]);
 
 function finiteNumber(value: unknown): number | undefined {
@@ -50,11 +51,11 @@ function validateVehicleBody(body: Record<string, unknown>) {
   }
 
   const capacityKg = finiteNumber(body.capacityKg);
-  if (body.capacityKg !== undefined && capacityKg === undefined) return { error: "Invalid capacityKg" };
+  if (body.capacityKg !== undefined && body.capacityKg !== null && capacityKg === undefined) return { error: "Invalid capacityKg" };
   if (capacityKg !== undefined && (capacityKg < 0 || capacityKg > 1000000)) return { error: "Invalid capacityKg" };
 
   const volumeM3 = finiteNumber(body.volumeM3);
-  if (body.volumeM3 !== undefined && volumeM3 === undefined) return { error: "Invalid volumeM3" };
+  if (body.volumeM3 !== undefined && body.volumeM3 !== null && volumeM3 === undefined) return { error: "Invalid volumeM3" };
   if (volumeM3 !== undefined && (volumeM3 < 0 || volumeM3 > 100000)) return { error: "Invalid volumeM3" };
 
   const refrigerated = body.refrigerated === undefined ? undefined : body.refrigerated;
@@ -71,7 +72,23 @@ function validateVehicleBody(body: Record<string, unknown>) {
     return { error: "Invalid plateNumber" };
   }
 
-  return { type, subtype, capacityKg, volumeM3, refrigerated, plateNumber };
+  let details: Record<string, string | number> | undefined;
+  if (body.details != null) {
+    if (typeof body.details !== "object" || Array.isArray(body.details)) return { error: "INVALID_VEHICLE_DETAILS" };
+    details = {};
+    const source = body.details as Record<string, unknown>;
+    for (const field of ["brandModel", "ownership", "city", "destination", "bodyType"] as const) {
+      if (source[field] !== undefined) {
+        if (typeof source[field] !== "string" || source[field].length > 160) return { error: "INVALID_VEHICLE_DETAILS" };
+        details[field] = source[field].trim();
+      }
+    }
+    if (source.year !== undefined) {
+      if (typeof source.year !== "number" || !Number.isInteger(source.year) || source.year < 1950 || source.year > new Date().getFullYear() + 1) return { error: "INVALID_VEHICLE_YEAR" };
+      details.year = source.year;
+    }
+  }
+  return { type, subtype, capacityKg, volumeM3, refrigerated, plateNumber, details };
 }
 
 export async function vehicleRoutes(app: FastifyInstance) {
@@ -93,6 +110,7 @@ export async function vehicleRoutes(app: FastifyInstance) {
           ownerId: request.user!.id,
           type: validation.type,
           subtype: validation.subtype,
+          details: validation.details,
           plateNumber: validation.plateNumber,
           capacityKg: validation.capacityKg,
           volumeM3: validation.volumeM3,
@@ -126,6 +144,7 @@ export async function vehicleRoutes(app: FastifyInstance) {
         data: {
           type: validation.type,
           subtype: validation.subtype,
+          details: validation.details,
           plateNumber: validation.plateNumber,
           capacityKg: validation.capacityKg,
           volumeM3: validation.volumeM3,

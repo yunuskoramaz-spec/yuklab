@@ -28,3 +28,15 @@ YükLab is a web-first, cross-platform, API-first logistics platform designed fo
 This repository is currently in Phase 1: architecture and design-system foundation.
 
 The implementation will be expanded incrementally. Features must be wired end-to-end rather than represented by visual-only mock controls.
+
+## Android APK
+
+Native Android client: `android/`. Build with JDK 17 and Android SDK 35:
+
+```sh
+cd android
+./gradlew assembleDebug testDebugUnitTest lintDebug
+```
+
+See [Android setup and known limitations](docs/ANDROID_APK.md). A reachable
+YükLab API server is required for registration, orders and provider operations.
