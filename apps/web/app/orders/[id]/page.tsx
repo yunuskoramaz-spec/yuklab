@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "../../components/AppShell";
 import { acceptOffer, browserAccessToken, cancelOrder, getOrder, listOrderOffers, updateOrder, type Offer, type Order } from "../../lib/api";
 
@@ -19,7 +19,7 @@ export default function OrderDetailPage() {
   const [editing, setEditing] = useState(false);
   const [pickup, setPickup] = useState(""); const [delivery, setDelivery] = useState(""); const [budget, setBudget] = useState("");
 
-  async function load(access?: string | null) {
+  const load = useCallback(async (access?: string | null) => {
     const next = access ?? browserAccessToken(); setToken(next);
     if (!next) return;
     setError("");
@@ -28,8 +28,8 @@ export default function OrderDetailPage() {
       setOrder(orderResult.order); setOffers(offerResult.offers);
       setPickup(orderResult.order.pickupAddress); setDelivery(orderResult.order.deliveryAddress ?? ""); setBudget(orderResult.order.budgetMinor ? String(Number(orderResult.order.budgetMinor) / 100) : "");
     } catch (e) { setError(e instanceof Error ? e.message : "İlan yüklenemedi."); }
-  }
-  useEffect(() => { void load(); }, [id]);
+  }, [id]);
+  useEffect(() => { void load(); }, [load]);
 
   async function save(e: FormEvent) {
     e.preventDefault(); if (!token || !order) return;
