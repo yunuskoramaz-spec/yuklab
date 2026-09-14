@@ -6,12 +6,13 @@ import android.graphics.drawable.GradientDrawable
 import android.view.View
 
 object Palette {
-    val ink=Color.rgb(12,50,72)
-    val muted=Color.rgb(105,126,139)
-    val accent=Color.rgb(14,162,139)
-    val background=Color.rgb(245,248,250)
-    val line=Color.rgb(226,233,237)
-    val soft=Color.rgb(232,246,242)
+    val ink=Color.rgb(23,27,30)
+    val accentText=Color.rgb(0,108,112)
+    val muted=Color.rgb(89,102,108)
+    val accent=Color.rgb(0,184,189)
+    val background=Color.rgb(244,246,247)
+    val line=Color.rgb(217,225,228)
+    val soft=Color.rgb(224,246,245)
     fun shape(color:Int,radius:Float=20f,stroke:Int?=null)=GradientDrawable().apply {
         setColor(color); cornerRadius=radius
         if(stroke!=null) setStroke(1,stroke)
