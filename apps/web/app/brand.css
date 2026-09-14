@@ -1,0 +1,33 @@
+.yl-brand-logo {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.yl-auth-logo {
+  width: 126px;
+  height: 126px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.yl-logo-on-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 18px;
+  background: #fff;
+}
+
+@media (max-width: 720px) {
+  .yl-auth-logo {
+    width: 92px;
+    height: 92px;
+  }
+}

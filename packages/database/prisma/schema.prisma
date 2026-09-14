@@ -63,6 +63,7 @@ model User {
   passwordHash      String?
   firstName         String
   lastName          String
+  avatarUrl         String?
   preferredLanguage String     @default("tr-TR")
   role              UserRole   @default(CUSTOMER)
   status            UserStatus @default(PENDING)
@@ -71,6 +72,10 @@ model User {
 
   driverProfile     DriverProfile?
   serviceProvider   ServiceProvider?
+  companyProfile    CompanyProfile?
+  preferences       UserPreference?
+  workRegions       WorkRegion[]
+  notifications     Notification[]
   vehicles          Vehicle[]
   orders            Order[]    @relation("CustomerOrders")
   assignedOrders    Order[]    @relation("DriverOrders")
@@ -98,36 +103,100 @@ model AuthSession {
 }
 
 model DriverProfile {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  isOnline          Boolean  @default(false)
-  isAvailable       Boolean  @default(false)
-  rating            Decimal  @default(0) @db.Decimal(3,2)
-  completedJobs     Int      @default(0)
-  cancellationRate  Decimal  @default(0) @db.Decimal(5,2)
-  reliabilityScore  Decimal  @default(0) @db.Decimal(5,2)
-  serviceRadiusKm   Decimal  @default(25) @db.Decimal(6,2)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  isOnline           Boolean            @default(false)
+  isAvailable        Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  rating             Decimal            @default(0) @db.Decimal(3,2)
+  completedJobs      Int                @default(0)
+  cancellationRate   Decimal            @default(0) @db.Decimal(5,2)
+  reliabilityScore   Decimal            @default(0) @db.Decimal(5,2)
+  serviceRadiusKm    Decimal            @default(25) @db.Decimal(6,2)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ServiceProvider {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  category          String
-  isOnline          Boolean  @default(false)
-  isAvailable       Boolean  @default(false)
-  rating            Decimal  @default(0) @db.Decimal(3,2)
-  completedJobs     Int      @default(0)
-  cancellationRate  Decimal  @default(0) @db.Decimal(5,2)
-  reliabilityScore  Decimal  @default(0) @db.Decimal(5,2)
-  serviceRadiusKm   Decimal  @default(50) @db.Decimal(6,2)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  category           String
+  isOnline           Boolean            @default(false)
+  isAvailable        Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  rating             Decimal            @default(0) @db.Decimal(3,2)
+  completedJobs      Int                @default(0)
+  cancellationRate   Decimal            @default(0) @db.Decimal(5,2)
+  reliabilityScore   Decimal            @default(0) @db.Decimal(5,2)
+  serviceRadiusKm    Decimal            @default(50) @db.Decimal(6,2)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CompanyProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  companyName        String
+  taxNumber          String?
+  website            String?
+  address            String?
+  city               String?
+  district           String?
+  verificationStatus VerificationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([verificationStatus])
+}
+
+model UserPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  theme              String   @default("system")
+  locale             String   @default("tr-TR")
+  pushEnabled        Boolean  @default(true)
+  marketingEnabled   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WorkRegion {
+  id                 String   @id @default(cuid())
+  userId             String
+  country            String   @default("TR")
+  city               String
+  district           String?
+  radiusKm           Decimal? @db.Decimal(6,2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([country, city])
+}
+
+model Notification {
+  id                 String   @id @default(cuid())
+  userId             String
+  type               String
+  title              String
+  body               String
+  data               Json?
+  readAt             DateTime?
+  createdAt          DateTime @default(now())
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
 }
 
 model Vehicle {
@@ -168,8 +237,8 @@ model Order {
   currency            String      @default("TRY")
   urgency             Int         @default(0)
   payload             Json?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
 
   customer            User        @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
   assignedDriver      User?       @relation("DriverOrders", fields: [assignedDriverId], references: [id], onDelete: SetNull)

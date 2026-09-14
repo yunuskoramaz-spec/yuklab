@@ -2,12 +2,14 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import rateLimit from "@fastify/rate-limit";
+import packageJson from "../package.json";
 import { userRoutes } from "./routes/users";
 import { authRoutes } from "./modules/auth/routes";
 import { orderRoutes } from "./modules/orders/routes";
 import { orderTransitionRoutes } from "./modules/orders/transition-routes";
 import { providerOrderRoutes } from "./modules/orders/provider-routes";
 import { offerRoutes } from "./modules/offers/routes";
+import { offerManagementRoutes } from "./modules/offers/management-routes";
 import { expireOffers } from "./modules/offers/expiry";
 import { matchingRoutes } from "./modules/matching/routes";
 import { trackingRoutes } from "./modules/tracking/routes";
@@ -16,7 +18,10 @@ import { trackingWsTokenRoutes } from "./modules/tracking/ws-token";
 import { vehicleRoutes } from "./modules/vehicles/routes";
 import { providerRoutes } from "./modules/providers/routes";
 import { routingRoutes } from "./modules/routing/routes";
+import { notificationRoutes } from "./modules/notifications/routes";
 import { prisma } from "./lib/prisma";
+
+export const API_VERSION = packageJson.version;
 
 export function buildApp() {
   const app = Fastify({ logger: true, bodyLimit: 1024 * 1024 });
@@ -48,7 +53,7 @@ export function buildApp() {
     }
   });
   app.register(websocket);
-  app.get("/health", async () => ({ status: "ok", service: "yuklab-api", version: "0.1.0" }));
+  app.get("/health", async () => ({ status: "ok", service: "yuklab-api", version: API_VERSION }));
   app.get("/ready", async (_request, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
@@ -63,6 +68,7 @@ export function buildApp() {
   app.register(orderTransitionRoutes);
   app.register(providerOrderRoutes);
   app.register(offerRoutes);
+  app.register(offerManagementRoutes);
   app.register(matchingRoutes);
   app.register(trackingRoutes);
   app.register(trackingWsTokenRoutes);
@@ -70,6 +76,7 @@ export function buildApp() {
   app.register(vehicleRoutes);
   app.register(providerRoutes);
   app.register(routingRoutes);
+  app.register(notificationRoutes);
 
   return app;
 }
