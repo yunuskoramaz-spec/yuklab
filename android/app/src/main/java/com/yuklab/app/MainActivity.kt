@@ -7,9 +7,14 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,9 +37,7 @@ class MainActivity : Activity() {
         token = session.accessToken
         refreshToken = session.refreshToken
         server = session.apiBaseUrl
-        window.statusBarColor = Color.WHITE
-        window.navigationBarColor = Color.WHITE
-        if (android.os.Build.VERSION.SDK_INT >= 23) window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        configureEdgeToEdge()
         showPanel()
     }
 
@@ -621,6 +624,7 @@ class MainActivity : Activity() {
 
     private fun showLogin() {
         val body = base("Giriş", back = { showPanel() })
+        loginBrand(body)
         pageIntro(body, "Hesabına giriş yap", "İlanlarını, tekliflerini ve araçlarını güvenli oturumla yönet.")
         val identifier = labeledField(body, "E-posta veya telefon *")
         val password = labeledField(body, "Şifre *", password = true)
@@ -863,28 +867,138 @@ class MainActivity : Activity() {
 
     // ---------- UI helpers ----------
 
+    private fun configureEdgeToEdge() {
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(false)
+            val appearance = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(appearance, appearance)
+        } else {
+            var flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            if (Build.VERSION.SDK_INT >= 23) flags = flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            if (Build.VERSION.SDK_INT >= 26) flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            window.decorView.systemUiVisibility = flags
+        }
+    }
+
     private fun base(title: String, activeTab: Int? = null, back: (() -> Unit)? = null): LinearLayout {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(YukLabTheme.BACKGROUND) }
-        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(10), dp(16), dp(10)); setBackgroundColor(Color.WHITE) }
-        if (back != null) {
-            val backView = YukLabTheme.text(this, "‹", 38f, YukLabTheme.ANTHRACITE, true).apply { gravity = Gravity.CENTER; isClickable = true; contentDescription = "Geri"; setOnClickListener { back() } }
-            top.addView(backView, LinearLayout.LayoutParams(dp(48), dp(56)))
-        }
-        val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        brand.addView(YukLabTheme.text(this, title, 22f, YukLabTheme.ANTHRACITE, true))
-        if (title == "YükLab") brand.addView(YukLabTheme.text(this, "YÜK VE TAŞIMA PLATFORMU", 10f, YukLabTheme.MUTED))
-        top.addView(brand, LinearLayout.LayoutParams(0, dp(58), 1f))
-        val settings = YukLabTheme.text(this, "⚙", 23f, YukLabTheme.TURQUOISE_DARK, true).apply { gravity = Gravity.CENTER; isClickable = true; contentDescription = "Ayarlar"; setOnClickListener { showSettings() } }
-        top.addView(settings, LinearLayout.LayoutParams(dp(48), dp(48)))
+        val top = topAppBar(title, back)
         root.addView(top)
 
-        val scroll = ScrollView(this).apply { isFillViewport = true }
+        val scroll = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(20), dp(16), dp(24)) }
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        if (activeTab != null) root.addView(bottomNav(activeTab))
+        val bottom = activeTab?.let { bottomNav(it) }
+        if (bottom != null) root.addView(bottom)
         setContentView(root)
+        applySystemBarInsets(root, top, body, bottom)
         return body
+    }
+
+    private fun topAppBar(title: String, back: (() -> Unit)?): LinearLayout {
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setBackgroundColor(Color.WHITE)
+            minimumHeight = dp(72)
+        }
+        if (back != null) {
+            val backView = YukLabTheme.text(this, "‹", 36f, YukLabTheme.ANTHRACITE, true).apply {
+                gravity = Gravity.CENTER
+                isClickable = true
+                isFocusable = true
+                contentDescription = "Geri"
+                setOnClickListener { back() }
+            }
+            top.addView(backView, LinearLayout.LayoutParams(dp(44), dp(52)).apply { setMargins(0, 0, dp(2), 0) })
+        }
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.logo_mark)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "YükLab"
+        }
+        top.addView(logo, LinearLayout.LayoutParams(dp(34), dp(34)).apply { setMargins(0, 0, dp(10), 0) })
+
+        val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
+        val titleView = YukLabTheme.text(this, title, 21f, YukLabTheme.ANTHRACITE, true).apply {
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            includeFontPadding = true
+        }
+        brand.addView(titleView, LinearLayout.LayoutParams(-1, -2))
+        if (title == "YükLab") {
+            brand.addView(YukLabTheme.text(this, "YÜK VE TAŞIMA PLATFORMU", 9f, YukLabTheme.MUTED).apply {
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+            })
+        }
+        top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(0, 0, dp(4), 0) })
+
+        val settings = YukLabTheme.text(this, "⚙", 23f, YukLabTheme.TURQUOISE_DARK, true).apply {
+            gravity = Gravity.CENTER
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Ayarlar"
+            setOnClickListener { showSettings() }
+        }
+        top.addView(settings, LinearLayout.LayoutParams(dp(46), dp(46)))
+        return top
+    }
+
+    private fun applySystemBarInsets(root: View, topBar: View, body: View, bottomBar: View?) {
+        val topLeft = topBar.paddingLeft
+        val topTop = topBar.paddingTop
+        val topRight = topBar.paddingRight
+        val topBottom = topBar.paddingBottom
+        val bodyLeft = body.paddingLeft
+        val bodyTop = body.paddingTop
+        val bodyRight = body.paddingRight
+        val bodyBottom = body.paddingBottom
+        val bottomLeft = bottomBar?.paddingLeft ?: 0
+        val bottomTop = bottomBar?.paddingTop ?: 0
+        val bottomRight = bottomBar?.paddingRight ?: 0
+        val bottomBottom = bottomBar?.paddingBottom ?: 0
+
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            var safeTop: Int
+            var safeBottom: Int
+            var safeLeft: Int
+            var safeRight: Int
+
+            if (Build.VERSION.SDK_INT >= 30) {
+                val topInsets = insets.getInsets(WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout())
+                val sideInsets = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                val bottomInsets = insets.getInsets(WindowInsets.Type.navigationBars() or WindowInsets.Type.systemGestures() or WindowInsets.Type.displayCutout())
+                safeTop = topInsets.top
+                safeBottom = bottomInsets.bottom
+                safeLeft = maxOf(topInsets.left, sideInsets.left, bottomInsets.left)
+                safeRight = maxOf(topInsets.right, sideInsets.right, bottomInsets.right)
+            } else {
+                safeTop = insets.systemWindowInsetTop
+                safeBottom = insets.systemWindowInsetBottom
+                safeLeft = insets.systemWindowInsetLeft
+                safeRight = insets.systemWindowInsetRight
+                if (Build.VERSION.SDK_INT >= 28) {
+                    insets.displayCutout?.let { cutout ->
+                        safeTop = maxOf(safeTop, cutout.safeInsetTop)
+                        safeBottom = maxOf(safeBottom, cutout.safeInsetBottom)
+                        safeLeft = maxOf(safeLeft, cutout.safeInsetLeft)
+                        safeRight = maxOf(safeRight, cutout.safeInsetRight)
+                    }
+                }
+            }
+
+            topBar.setPadding(topLeft + safeLeft, topTop + safeTop, topRight + safeRight, topBottom)
+            body.setPadding(bodyLeft + safeLeft, bodyTop, bodyRight + safeRight, bodyBottom + if (bottomBar == null) safeBottom else 0)
+            bottomBar?.setPadding(bottomLeft + safeLeft, bottomTop, bottomRight + safeRight, bottomBottom + safeBottom)
+            insets
+        }
+        root.post { root.requestApplyInsets() }
     }
 
     private fun bottomNav(active: Int): View {
@@ -907,6 +1021,16 @@ class MainActivity : Activity() {
             nav.addView(box, LinearLayout.LayoutParams(0, dp(62), 1f).apply { setMargins(dp(1), 0, dp(1), 0) })
         }
         return nav
+    }
+
+    private fun loginBrand(parent: LinearLayout) {
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.logo_full)
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            contentDescription = "YükLab"
+        }
+        parent.addView(logo, LinearLayout.LayoutParams(-1, dp(86)).apply { setMargins(dp(12), dp(2), dp(12), dp(14)) })
     }
 
     private fun pageIntro(parent: LinearLayout, title: String, subtitle: String) {
@@ -995,7 +1119,38 @@ class MainActivity : Activity() {
         card.addView(space(10)); card.addView(YukLabTheme.button(this, "Tekrar dene", false, retry)); parent.addView(card)
     }
 
-    private fun aboutDialog() = AlertDialog.Builder(this).setTitle("YükLab").setMessage("Global Smart Logistics Network\n\nTürkiye öncelikli, global ölçeklenebilir yük ve taşıma platformu.").setPositiveButton("Kapat", null).show()
+    private fun aboutDialog() {
+        val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "-"
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(20), dp(22), dp(4))
+        }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.logo_mark)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "YükLab"
+        }
+        header.addView(logo, LinearLayout.LayoutParams(dp(44), dp(44)).apply { setMargins(0, 0, dp(12), 0) })
+        val copy = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        copy.addView(YukLabTheme.text(this@MainActivity, "YükLab", 20f, YukLabTheme.ANTHRACITE, true))
+        copy.addView(YukLabTheme.text(this@MainActivity, "GLOBAL SMART LOGISTICS NETWORK", 10f, YukLabTheme.MUTED, true))
+        header.addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(header)
+        content.addView(space(14))
+        content.addView(YukLabTheme.text(this, "Sürüm $version", 12f, YukLabTheme.TURQUOISE_DARK, true).apply {
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = YukLabTheme.shape(this@MainActivity, YukLabTheme.TURQUOISE_SOFT, 12f)
+        }, LinearLayout.LayoutParams(-2, -2))
+        content.addView(space(12))
+        content.addView(YukLabTheme.text(this, "Türkiye öncelikli, global ölçekte büyüyebilen yük ve taşıma platformu.", 14f, YukLabTheme.MUTED))
+
+        AlertDialog.Builder(this)
+            .setView(content)
+            .setPositiveButton("Kapat", null)
+            .show()
+    }
+
     private fun privacyDialog() = AlertDialog.Builder(this).setTitle("Gizlilik").setMessage("Oturum anahtarları cihazda özel uygulama depolamasında tutulur. Hassas değerler arayüzde veya loglarda gösterilmez. Ayrıntılı hukuki metin henüz projeye eklenmedi.").setPositiveButton("Kapat", null).show()
     private fun supportDialog() = AlertDialog.Builder(this).setTitle("Yardım ve destek").setMessage("Uygulama içi destek bileti backend'i henüz bulunmuyor. Bu ekran iletişim kanalı varmış gibi sahte veri göstermiyor.").setPositiveButton("Kapat", null).show()
 
