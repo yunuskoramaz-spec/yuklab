@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import rateLimit from "@fastify/rate-limit";
+import packageJson from "../package.json";
 import { userRoutes } from "./routes/users";
 import { authRoutes } from "./modules/auth/routes";
 import { orderRoutes } from "./modules/orders/routes";
@@ -19,6 +20,8 @@ import { providerRoutes } from "./modules/providers/routes";
 import { routingRoutes } from "./modules/routing/routes";
 import { notificationRoutes } from "./modules/notifications/routes";
 import { prisma } from "./lib/prisma";
+
+export const API_VERSION = packageJson.version;
 
 export function buildApp() {
   const app = Fastify({ logger: true, bodyLimit: 1024 * 1024 });
@@ -50,7 +53,7 @@ export function buildApp() {
     }
   });
   app.register(websocket);
-  app.get("/health", async () => ({ status: "ok", service: "yuklab-api", version: "0.1.0" }));
+  app.get("/health", async () => ({ status: "ok", service: "yuklab-api", version: API_VERSION }));
   app.get("/ready", async (_request, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
