@@ -37,7 +37,7 @@ export async function offerManagementRoutes(app: FastifyInstance) {
     const amountMinor = parseAmount(request.body?.amountMinor);
     if (amountMinor === null) return reply.code(400).send({ error: "INVALID_AMOUNT" });
 
-    let etaMinutes: number | null | undefined = request.body?.etaMinutes;
+    const etaMinutes: number | null | undefined = request.body?.etaMinutes;
     if (etaMinutes !== undefined && etaMinutes !== null) {
       if (!Number.isInteger(etaMinutes) || etaMinutes < 1 || etaMinutes > MAX_ETA_MINUTES) return reply.code(400).send({ error: "INVALID_ETA" });
     }
