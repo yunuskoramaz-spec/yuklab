@@ -2,7 +2,7 @@ name: Android APK
 
 on:
   push:
-    branches: [main, android-ui-v3]
+    branches: [main, android-ui-v3, feature/yuklab-professional-ui]
     paths:
       - 'android/**'
       - '.github/workflows/android.yml'
