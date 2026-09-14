@@ -75,7 +75,7 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         window.navigationBarColor=Color.WHITE
         val header=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL; setBackgroundColor(Color.WHITE); setPadding(dp(20),dp(10),dp(20),dp(12)) }
-        if(onBack!=null && tab==null) header.addView(Glyph(this,"back").apply { contentDescription="Geri"; setPadding(dp(10),dp(10),dp(10),dp(10)); setOnClickListener { onBack() } },LinearLayout.LayoutParams(dp(44),dp(44)))
+        if(onBack!=null && tab==null) header.addView(Glyph(this,"back").apply { contentDescription="Geri"; setPadding(dp(10),dp(10),dp(10),dp(10)); setOnClickListener { onBack() } },LinearLayout.LayoutParams(dp(48),dp(48)))
         val titleBox=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
         header.addView(titleBox,LinearLayout.LayoutParams(0,-2,1f))
         text(titleBox,if(tab=="home") "YÜKLAB" else title,if(tab=="home") 26 else 23,true)
@@ -83,21 +83,24 @@ class MainActivity : Activity() {
         header.addView(Glyph(this,if(tab=="profile") "user" else "truck",Palette.accent),LinearLayout.LayoutParams(dp(28),dp(28)))
         root.addView(header)
         if(demoMode) root.addView(TextView(this).apply { text="TANITIM MODU · TÜM KAYITLAR ÖRNEKTİR"; gravity=Gravity.CENTER; textSize=10f; setTextColor(Palette.ink); setBackgroundColor(Palette.soft); setPadding(0,dp(8),0,dp(8)) })
-        val body=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(20),dp(18),dp(20),dp(24)) }
-        root.addView(ScrollView(this).apply { isFillViewport=true; addView(body) },LinearLayout.LayoutParams(-1,0,1f))
+        val wide=resources.configuration.screenWidthDp>=600
+        val workspace=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+        root.addView(workspace,LinearLayout.LayoutParams(-1,0,1f))
+        val body=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; val gutter=if(wide) 40 else 20; setPadding(dp(gutter),dp(24),dp(gutter),dp(32)) }
+        workspace.addView(ScrollView(this).apply { isFillViewport=true; addView(body) },LinearLayout.LayoutParams(0,-1,1f))
         if(tab!=null) {
-            val nav=LinearLayout(this).apply { setBackgroundColor(Color.WHITE); gravity=Gravity.CENTER; setPadding(dp(8),dp(8),dp(8),dp(8)) }
+            val nav=LinearLayout(this).apply { orientation=if(wide) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL; setBackgroundColor(Color.WHITE); gravity=if(wide) Gravity.TOP else Gravity.CENTER; setPadding(dp(8),dp(8),dp(8),dp(8)) }
             val labels=listOf(Triple("home","home","Panel"),Triple("loads","list","İlanlar"),Triple("new","plus","Oluştur"),Triple("contacts","contacts","Portföy"),Triple("profile","user","Profil"))
             for((id,icon,label) in labels) {
                 val active=tab==id
-                val cell=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; minimumHeight=dp(56); contentDescription=label; isClickable=true; isFocusable=true }
-                val glyph=Glyph(this,icon,if(active || id=="new") Palette.accent else Palette.muted)
+                val cell=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; minimumHeight=dp(64); background=Palette.shape(if(active) Palette.soft else Color.WHITE,dp(14).toFloat()); contentDescription=label; isClickable=true; isFocusable=true }
+                val glyph=Glyph(this,icon,if(active || id=="new") Palette.accentText else Palette.muted)
                 cell.addView(glyph,LinearLayout.LayoutParams(dp(24),dp(24)))
                 cell.addView(TextView(this).apply { text=label; textSize=10f; gravity=Gravity.CENTER; setPadding(0,dp(5),0,0); setTextColor(if(active) Palette.ink else Palette.muted); if(active) setTypeface(null,android.graphics.Typeface.BOLD) })
                 cell.setOnClickListener { if(id!=tab) when(id) { "home"->showHome(); "loads"->showOrders(isProvider()); "new"->showCreateMenu(); "contacts"->showPortfolio(); else->showProfile() } }
-                nav.addView(cell,LinearLayout.LayoutParams(0,-2,1f))
+                nav.addView(cell,if(wide) LinearLayout.LayoutParams(-1,dp(76)).apply { bottomMargin=dp(8) } else LinearLayout.LayoutParams(0,-2,1f))
             }
-            root.addView(nav)
+            if(wide) workspace.addView(nav,0,LinearLayout.LayoutParams(dp(104),-1)) else root.addView(nav)
         }
         setContentView(root); root.requestApplyInsets(); return body
     }
@@ -108,9 +111,9 @@ class MainActivity : Activity() {
         val name=session?.optJSONObject("user")?.optString("firstName").orEmpty()
         text(b,if(name.isBlank()) "Hoş geldin." else "Merhaba, $name",14)
         val hero=card(b).apply { background=Palette.shape(Palette.ink,dp(24).toFloat()); setPadding(dp(22),dp(20),dp(22),dp(22)) }
-        hero.addView(TextView(this).apply { text=if(isProvider()) "DAHA AZ BOŞ YOL" else "HER YÜKE BİR YOL"; textSize=10f; letterSpacing=.15f; setTextColor(Color.rgb(119,221,201)); setPadding(0,0,0,dp(14)) })
+        hero.addView(TextView(this).apply { text=if(isProvider()) "DAHA AZ BOŞ YOL" else "HER YÜKE BİR YOL"; textSize=10f; letterSpacing=.15f; setTextColor(Palette.accent); setPadding(0,0,0,dp(14)) })
         hero.addView(TextView(this).apply { text=if(isProvider()) "Bir sonraki yükün\nburada." else "Yükünü kolayca\nyola çıkar."; textSize=30f; setTextColor(Color.WHITE); setTypeface(null,android.graphics.Typeface.BOLD) })
-        hero.addView(TextView(this).apply { text=if(isProvider()) "Aracına uygun işleri bul, teklif ver,\nsevkiyatlarını tek yerden yönet." else "İlanını oluştur, taşıyıcılarla eşleş,\ntekliflerini tek yerden yönet."; textSize=14f; setTextColor(Color.rgb(198,219,228)); setLineSpacing(dp(3).toFloat(),1f); setPadding(0,dp(12),0,dp(14)) })
+        hero.addView(TextView(this).apply { text=if(isProvider()) "Aracına uygun işleri bul, teklif ver,\nsevkiyatlarını tek yerden yönet." else "İlanını oluştur, taşıyıcılarla eşleş,\ntekliflerini tek yerden yönet."; textSize=14f; setTextColor(Color.rgb(202,211,214)); setLineSpacing(dp(3).toFloat(),1f); setPadding(0,dp(12),0,dp(14)) })
         button(hero,if(isProvider()) "Uygun yükleri keşfet  →" else "Yeni ilan oluştur  +") { if(isProvider()) showOrders(true) else showCreateMenu() }
         if(session==null && !demoMode) {
             actionCard(b,"user","Giriş yap veya hesap oluştur","İlanlarını ve tekliflerini hesabında sakla") { showLogin() }
@@ -134,6 +137,7 @@ class MainActivity : Activity() {
     private fun showLogin() {
         demoMode=false
         val b=base("Giriş")
+        text(b,"YükLab",32,true); text(b,"GLOBAL SMART LOGISTICS NETWORK",11); text(b,"Yolculuğa buradan devam et.",20,true)
         val identifier=input(b,"E-posta veya telefon"); val password=input(b,"Şifre",password=true)
         button(b,"Giriş yap") {
             if(identifier.text.isBlank() || password.text.isBlank()) { toast("E-posta/telefon ve şifre gerekli."); return@button }
@@ -419,7 +423,7 @@ class MainActivity : Activity() {
             toast(if(data.optString("status")=="ready" && data.optString("service")=="yuklab-api") "Sunucu ve veritabanı hazır." else "Bu adres geçerli bir YükLab API yanıtı vermiyor.")
         } }
         text(b,"Sipariş, kayıt ve giriş için çalışan bir YükLab API sunucusu gerekir. Varsayılan adresin kullanılabilirliği sunucuya bağlıdır.",14)
-        text(b,"YükLab 2.2 • Android deneme sürümü",13)
+        text(b,"YükLab 2.3 • Android deneme sürümü",13)
     }
     private fun logout() {
         saveForm?.invoke(); saveForm=null
@@ -651,16 +655,16 @@ class MainActivity : Activity() {
     private fun state(value:String)=states[value] ?: value
     private fun safe(o:JSONObject,key:String,fallback:String="—")=if(o.isNull(key)) fallback else o.optString(key).ifBlank { fallback }
     private fun column(parent:LinearLayout)=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; parent.addView(this,lp()) }
-    private fun card(parent:LinearLayout)=column(parent).apply { setPadding(dp(18),dp(14),dp(18),dp(14)); background=Palette.shape(Color.WHITE,dp(20).toFloat(),Palette.line); elevation=dp(1).toFloat() }
+    private fun card(parent:LinearLayout)=column(parent).apply { setPadding(dp(20),dp(20),dp(20),dp(20)); background=Palette.shape(Color.WHITE,dp(18).toFloat(),Palette.line); elevation=0f }
     private fun text(parent:LinearLayout,value:String,size:Int=16,bold:Boolean=false) { parent.addView(TextView(this).apply { text=value; textSize=size.toFloat(); setTextColor(if(size<=14) Palette.muted else Palette.ink); if(bold) setTypeface(null,android.graphics.Typeface.BOLD); setLineSpacing(dp(2).toFloat(),1f); setPadding(0,dp(4),0,dp(7)) },LinearLayout.LayoutParams(-1,-2)) }
     private fun input(parent:LinearLayout,hint:String,password:Boolean=false,number:Boolean=false):EditText {
         text(parent,hint,12,true)
-        return EditText(this).apply { id=fieldId++; this.hint=hint; filters=arrayOf(android.text.InputFilter.LengthFilter(if(number) 24 else if(password) 128 else 1000)); textSize=15f; setSingleLine(); setTextColor(Palette.ink); setHintTextColor(Palette.muted); setPadding(dp(14),dp(12),dp(14),dp(12)); background=Palette.shape(Color.WHITE,dp(12).toFloat(),Palette.line); minimumHeight=dp(50); inputType=if(password) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else if(number) InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED else InputType.TYPE_CLASS_TEXT; parent.addView(this,lp()) }
+        return EditText(this).apply { id=fieldId++; this.hint=hint; filters=arrayOf(android.text.InputFilter.LengthFilter(if(number) 24 else if(password) 128 else 1000)); textSize=16f; setSingleLine(); setTextColor(Palette.ink); setHintTextColor(Palette.muted); setPadding(dp(14),dp(12),dp(14),dp(12)); background=Palette.shape(Color.WHITE,dp(12).toFloat(),Palette.line); minimumHeight=dp(50); inputType=if(password) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else if(number) InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED else InputType.TYPE_CLASS_TEXT; parent.addView(this,lp()) }
     }
     private fun button(parent:LinearLayout,label:String,action:()->Unit) { styledButton(parent,label,false,action) }
     private fun secondary(parent:LinearLayout,label:String,action:()->Unit) { styledButton(parent,label,true,action) }
     private fun styledButton(parent:LinearLayout,label:String,outline:Boolean,action:()->Unit) {
-        parent.addView(Button(this).apply { text=label; isEnabled=inFlight==0; isAllCaps=false; textSize=14f; setTypeface(null,android.graphics.Typeface.BOLD); minHeight=dp(50); setPadding(dp(12),dp(10),dp(12),dp(10)); setTextColor(if(outline) Palette.ink else Color.WHITE); backgroundTintList=null; background=Palette.shape(if(outline) Color.WHITE else Palette.accent,dp(14).toFloat(),if(outline) Palette.line else null); elevation=0f; stateListAnimator=null; setOnClickListener { action() } },lp())
+        parent.addView(Button(this).apply { text=label; isEnabled=inFlight==0; isAllCaps=false; textSize=14f; setTypeface(null,android.graphics.Typeface.BOLD); minHeight=dp(50); setPadding(dp(12),dp(10),dp(12),dp(10)); setTextColor(Palette.ink); backgroundTintList=null; background=android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x22171B1E),Palette.shape(if(outline) Color.WHITE else Palette.accent,dp(14).toFloat(),if(outline) Palette.line else null),null); elevation=0f; stateListAnimator=null; setOnClickListener { action() } },lp())
     }
     private fun select(parent:LinearLayout,label:String,choices:Map<String,String>):Spinner { text(parent,label,12,true); return Spinner(this).apply { id=fieldId++; adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,choices.values.toList()); background=Palette.shape(Color.WHITE,dp(12).toFloat(),Palette.line); setPadding(dp(8),0,dp(8),0); parent.addView(this,lp(dp(50))) } }
     private fun key(spinner:Spinner,choices:Map<String,String>)=choices.keys.elementAt(spinner.selectedItemPosition)
@@ -678,7 +682,7 @@ class MainActivity : Activity() {
         val words=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }; c.addView(words,LinearLayout.LayoutParams(0,-2,1f)); text(words,title,16,true); text(words,subtitle,12)
         c.addView(Glyph(this,"arrow",Palette.muted),LinearLayout.LayoutParams(dp(20),dp(20))); c.isFocusable=true; c.setOnClickListener { action() }
     }
-    private fun chip(parent:LinearLayout,label:String) { parent.addView(TextView(this).apply { text=label; textSize=11f; setTextColor(Palette.accent); setTypeface(null,android.graphics.Typeface.BOLD); background=Palette.shape(Palette.soft,dp(8).toFloat()); setPadding(dp(9),dp(5),dp(9),dp(5)) },LinearLayout.LayoutParams(-2,-2).apply { bottomMargin=dp(10) }) }
+    private fun chip(parent:LinearLayout,label:String) { parent.addView(TextView(this).apply { text=label; textSize=11f; setTextColor(Palette.accentText); setTypeface(null,android.graphics.Typeface.BOLD); background=Palette.shape(Palette.soft,dp(8).toFloat()); setPadding(dp(9),dp(5),dp(9),dp(5)) },LinearLayout.LayoutParams(-2,-2).apply { bottomMargin=dp(10) }) }
     private fun pair(parent:LinearLayout,label:String,value:String) { val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; setPadding(0,dp(7),0,dp(7)) }; row.addView(TextView(this).apply { text=label; textSize=13f; setTextColor(Palette.muted) },LinearLayout.LayoutParams(0,-2,1f)); row.addView(TextView(this).apply { text=value; textSize=14f; setTextColor(Palette.ink); gravity=Gravity.END; maxWidth=dp(195) },LinearLayout.LayoutParams(0,-2,1f)); parent.addView(row) }
     private fun empty(parent:LinearLayout,title:String,detail:String) { val c=card(parent); c.gravity=Gravity.CENTER; c.addView(Glyph(this,"box",Palette.muted),LinearLayout.LayoutParams(dp(40),dp(40))); text(c,title,18,true); text(c,detail,14) }
     private fun watch(field:EditText,action:()->Unit) { field.addTextChangedListener(object:android.text.TextWatcher { override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int) {} ; override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int) { action() }; override fun afterTextChanged(s:android.text.Editable?) {} }) }
