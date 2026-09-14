@@ -55,6 +55,21 @@ object YukLabTheme {
             if (bold) setTypeface(typeface, Typeface.BOLD)
             includeFontPadding = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+
+            when (value) {
+                "YükLab" -> context.getDrawable(R.drawable.logo_mark)?.let { mark ->
+                    val side = context.dp(36)
+                    mark.setBounds(0, 0, side, side)
+                    setCompoundDrawables(mark, null, null, null)
+                    compoundDrawablePadding = context.dp(9)
+                }
+                "Hesabına giriş yap", "YükLab'a katıl" -> context.getDrawable(R.drawable.logo_full)?.let { fullLogo ->
+                    val side = context.dp(210)
+                    fullLogo.setBounds(0, 0, side, side)
+                    setCompoundDrawables(null, fullLogo, null, null)
+                    compoundDrawablePadding = context.dp(18)
+                }
+            }
         }
 
     fun button(context: Context, label: String, primary: Boolean = true, onClick: () -> Unit): TextView =

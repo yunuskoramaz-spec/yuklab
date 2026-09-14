@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "./components/AppShell";
@@ -43,7 +44,7 @@ export default function HomePage() {
 
       {!token && (
         <section className="yl-card yl-auth-banner" style={{ marginTop: 16 }}>
-          <span className="yl-avatar" aria-hidden="true">○</span>
+          <Image className="yl-auth-logo" src="/brand/logo-full.webp" alt="YükLab Global Smart Logistics Network" width={126} height={126} />
           <div><h3>Giriş yap veya hesap oluştur</h3><p>İlanlarını ve tekliflerini hesabında sakla.</p></div>
           <Link className="yl-btn-secondary" href="/profile">Giriş / Kayıt →</Link>
         </section>

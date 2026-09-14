@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -23,7 +24,7 @@ export function AppShell({ children, title, kicker }: { children: ReactNode; tit
     <div className="yl-shell">
       <aside className="yl-sidebar" aria-label="Ana navigasyon">
         <Link href="/" className="yl-brand" aria-label="YükLab ana sayfa">
-          <span className="yl-brand-mark" aria-hidden="true">Y</span>
+          <Image className="yl-brand-logo" src="/brand/logo-mark.jpg" alt="" width={46} height={46} priority />
           <span><strong>Yük<span>Lab</span></strong><small>GLOBAL SMART LOGISTICS NETWORK</small></span>
         </Link>
         <nav className="yl-side-nav">
