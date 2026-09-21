@@ -1,8 +1,9 @@
 name: Build MAYIN APK
 
 on:
-  pull_request:
-    branches: [ "main" ]
+  push:
+    branches: [ "mayin-apk-build" ]
+  workflow_dispatch:
 
 jobs:
   build:
