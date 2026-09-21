@@ -1,0 +1,28 @@
+name: Build MAYIN APK
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Create Android scaffold
+        working-directory: mayin_app
+        run: flutter create . --platforms=android --org=com.mayin.game --project-name=mayin
+      - name: Get packages
+        working-directory: mayin_app
+        run: flutter pub get
+      - name: Build release APK
+        working-directory: mayin_app
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MAYIN-release-apk
+          path: mayin_app/build/app/outputs/flutter-apk/app-release.apk
