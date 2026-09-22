@@ -13,13 +13,25 @@ function serializeProfile(profile: {
   category?: string | null;
   isOnline: boolean;
   isAvailable: boolean;
+  verificationStatus: string;
   rating: unknown;
   completedJobs: number;
   cancellationRate: unknown;
   reliabilityScore: unknown;
   serviceRadiusKm: unknown;
 }) {
-  return { userId: profile.userId, category: profile.category ?? null, isOnline: profile.isOnline, isAvailable: profile.isAvailable, rating: decimalToNumber(profile.rating), completedJobs: profile.completedJobs, cancellationRate: decimalToNumber(profile.cancellationRate), reliabilityScore: decimalToNumber(profile.reliabilityScore), serviceRadiusKm: decimalToNumber(profile.serviceRadiusKm) };
+  return {
+    userId: profile.userId,
+    category: profile.category ?? null,
+    isOnline: profile.isOnline,
+    isAvailable: profile.isAvailable,
+    verificationStatus: profile.verificationStatus,
+    rating: decimalToNumber(profile.rating),
+    completedJobs: profile.completedJobs,
+    cancellationRate: decimalToNumber(profile.cancellationRate),
+    reliabilityScore: decimalToNumber(profile.reliabilityScore),
+    serviceRadiusKm: decimalToNumber(profile.serviceRadiusKm),
+  };
 }
 
 export async function providerRoutes(app: FastifyInstance) {

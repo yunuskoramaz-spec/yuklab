@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { buildApp } from "./server";
+import { API_VERSION, buildApp } from "./server";
 
 describe("API server", () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -19,7 +19,7 @@ describe("API server", () => {
     const response = await app.inject({ method: "GET", url: "/health" });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "ok", service: "yuklab-api", version: "0.1.0" });
+    expect(response.json()).toEqual({ status: "ok", service: "yuklab-api", version: API_VERSION });
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
     expect(response.headers["x-frame-options"]).toBe("DENY");
     expect(response.headers["referrer-policy"]).toBe("no-referrer");
